@@ -2,143 +2,51 @@
 % Please edit documentation in R/nutrilite.R
 \name{nutrilite}
 \alias{nutrilite}
-\title{Estimate Nutrient Uptake Rates in Stream Ecosystems}
+\title{Estimate Parameters in Stream Ecosystems}
 \usage{
 nutrilite(
-  btc_data,
+  time,
+  conc,
   distance,
-  cl_mass,
-  n_mass,
+  injected_mass,
   cross_area,
+  tracer_type = c("conservative", "reactive"),
+  model_type = c("FO", "FO_TS", "MM", "MM_TS"),
   bounds = NULL,
-  type = c("first_order", "first_order_transit_storage", "michaelis_menten",
-    "michaelis_menten_transit_storage"),
-  initPoints = 10,
-  iters.n = 50,
-  ...
+  fixed_params = list(),
+  n_evals = 80
 )
 }
 \arguments{
-\item{btc_data}{A data frame containing observed breakthrough curve data with the following columns:
-\itemize{
-\item{\code{cl}: Chloride concentration in mg/L.}
-\item{\code{n}: Nitrogen concentration in µg/L.}
-\item{\code{time}: Time since injection in seconds.}
-}}
+\item{time}{Numeric vector of observation times in seconds.}
+
+\item{conc}{Numeric vector of observed concentrations (mg/L or µg/L).}
 
 \item{distance}{Numeric. Distance from the injection point to the sampling point, in meters.}
 
-\item{cl_mass}{Numeric. Total mass of chloride injected, in milligrams.}
+\item{injected_mass}{Numeric. Total mass of the tracer injected.}
 
-\item{n_mass}{Numeric. Total mass of nitrogen injected, in micrograms.}
+\item{cross_area}{Numeric. Cross-sectional area of the stream, in square meters.}
 
-\item{cross_area}{Numeric. Cross-sectional area of the stream at the sampling point, in square meters.}
+\item{tracer_type}{Character. Either \code{"conservative"} (for conservative tracers like Cl)
+or \code{"reactive"} (for reactive tracers like N). Defaults to \code{"conservative"}.}
 
-\item{bounds}{Optional. A named list specifying lower and upper bounds for model parameters.
-If \code{NULL} (default), bounds are automatically estimated from the data. Example structure:
-\preformatted{
-  list(
-    Cl = c(0, 10),      # Background Cl concentration (mg/L)
-    N = c(0, 5),        # Background N concentration (µg/L)
-    D = c(0.1, 10),     # Dispersion coefficient (m²/s)
-    U = c(0.01, 2),     # Stream velocity (m/s)
-    K = c(0.001, 0.1),  # First-order uptake rate constant (1/s)
-    Alpha = c(0, 1),    # Transient storage exchange rate (1/s)
-    AsA = c(0, 10),     # Ratio of storage zone to main channel area
-    Vmax = c(0, 10000), # Maximum uptake rate for Michaelis-Menten (µg/L/s)
-    Km = c(0, 1000000)  # Half-saturation constant for Michaelis-Menten (µg/L)
-  )
-  }}
+\item{model_type}{Character string specifying the model type. One of:
+\code{"FO"}, \code{"FO_TS"}, \code{"MM"}, or \code{"MM_TS"}. Defaults to \code{"FO"}.}
 
-\item{type}{Character string specifying the model type. One of:
-\code{"first_order"}, \code{"first_order_transit_storage"},
-\code{"michaelis_menten"}, or \code{"michaelis_menten_transit_storage"}.
-Defaults to \code{"first_order"}.}
+\item{bounds}{A named list specifying lower and upper bounds for parameters.}
 
-\item{initPoints}{Integer. Number of initial random evaluations for Bayesian optimization.
-Default: \code{10}.}
+\item{fixed_params}{A named list of parameters to keep constant. This is highly useful
+when fitting reactive tracers where hydraulic parameters are already known.}
 
-\item{iters.n}{Integer. Number of Bayesian optimization iterations after initial sampling.
-Default: \code{50}.}
-
-\item{...}{Additional arguments passed to \code{ParBayesianOptimization::bayesOpt},
-such as \code{acq} (acquisition function type: \code{"ei"}, \code{"ucb"}, \code{"poi"}),
-\code{parallel} (logical for parallel evaluation), \code{kappa} (exploration-exploitation trade-off),
-or \code{verbose} (output verbosity level).}
+\item{n_evals}{Integer. Number of optimization evaluations for mlr3mbo. Default: \code{80}.}
 }
 \value{
-An object of class \code{bayesOpt} from the \code{ParBayesianOptimization} package,
-containing the results of the Bayesian optimization process. Key components include:
-\itemize{
-\item{\code{FUN}: The scoring function used for optimization.}
-\item{\code{bounds}: The parameter bounds provided by the user.}
-\item{\code{iters}: Total number of iterations run.}
-\item{\code{scoreSummary}: A \code{data.table} with columns for parameter values,
-scores (negative residual sum of squares), iteration details, and additional outputs from the scoring function.}
-\item{\code{stopStatus}: Reason for optimization termination (e.g., time limit reached, maximum iterations).}
-\item{\code{elapsedTime}: Total optimization time in seconds.}
-}
-To extract the optimal parameters, use:
-\preformatted{
-best_params <- result$scoreSummary[which.max(result$scoreSummary$Score), ]
-}
-For more details, see the \href{https://cran.r-project.org/web/packages/ParBayesianOptimization/index.html}{ParBayesianOptimization documentation}.
+An object of class \code{nutrilite_fit} containing the best parameters, MSE, RSS, and metadata.
 }
 \description{
-Nutrilite is a lightweight tool for estimating nutrient uptake rates in stream ecosystems
-using tracer injection experiments. It solves differential equations that model nutrient
-dynamics (advection, dispersion, and uptake) and fits these models to observed breakthrough
-curves (BTCs) of nutrient concentrations over time. By employing Bayesian optimization
-via \code{ParBayesianOptimization::bayesOpt}, Nutrilite efficiently infers globally optimal
-parameters for robust uptake rate estimation.
-
-The function supports four model types:
-\itemize{
-\item{\code{first_order}: Assumes uptake rate is proportional to nutrient concentration.}
-\item{\code{first_order_transit_storage}: Adds transient storage to the first-order model.}
-\item{\code{michaelis_menten}: Uses a Michaelis-Menten kinetics model for uptake saturation.}
-\item{\code{michaelis_menten_transit_storage}: Combines Michaelis-Menten kinetics with transient storage.}
-}
-
-This tool is particularly useful for hydrologists and ecologists studying nutrient cycling
-in streams, such as chloride (Cl) and nitrogen (N) dynamics.
-}
-\examples{
-\dontrun{
-# Load required packages
-library(ParBayesianOptimization)
-library(ReacTran)
-
-# Simulate a realistic breakthrough curve dataset
-set.seed(123)
-time <- seq(0, 100, by = 5)  # Time in seconds
-cl <- 0.1 + 10 * exp(-((time - 20)^2) / 50)  # Chloride concentration (mg/L)
-n <- 2 + 50 * exp(-((time - 25)^2) / 60)     # Nitrogen concentration (µg/L)
-btc_data <- data.frame(cl = cl, n = n, time = time)
-
-# Set experimental parameters
-distance <- 50      # Distance in meters
-cl_mass <- 1000     # Chloride mass in mg
-n_mass <- 500       # Nitrogen mass in µg
-cross_area <- 0.5   # Cross-sectional area in m²
-
-# Define parameter bounds (narrowed for faster optimization)
-bounds <- list(
-  Cl = c(0, 1),      # Background Cl concentration (mg/L)
-  N = c(0, 5),       # Background N concentration (µg/L)
-  D = c(0.1, 1),     # Dispersion coefficient (m²/s)
-  U = c(0.1, 1),     # Stream velocity (m/s)
-  K = c(0.001, 0.1)  # First-order uptake rate constant (1/s)
-)
-
-# Run with first-order model (limited iterations for quick execution)
-result_fo <- nutrilite(btc_data, distance, cl_mass, n_mass, cross_area, 
-                       bounds = bounds, type = "first_order", 
-                       initPoints = 5, iters.n = 10)
-
-# Extract best parameters from scoreSummary
-best_params_fo <- result_fo$scoreSummary[which.max(result_fo$scoreSummary$Score), ]
-print(best_params_fo)
-}
-
+Nutrilite fits stream solute dynamics models using Bayesian optimization via mlr3mbo.
+It supports a two-step fitting process: first fitting hydraulic parameters using a
+conservative tracer (e.g., Cl), and then fitting biogeochemical parameters using a
+reactive tracer (e.g., N).
 }

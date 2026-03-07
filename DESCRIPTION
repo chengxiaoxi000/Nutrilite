@@ -11,6 +11,9 @@ Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.2
 Imports: 
-    ParBayesianOptimization,
-    ReacTran,
-    deSolve
+    bbotk,
+    data.table,
+    deSolve,
+    mlr3mbo,
+    paradox,
+    ReacTran
