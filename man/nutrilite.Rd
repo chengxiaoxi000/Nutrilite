@@ -28,25 +28,22 @@ nutrilite(
 
 \item{cross_area}{Numeric. Cross-sectional area of the stream, in square meters.}
 
-\item{tracer_type}{Character. Either \code{"conservative"} (for conservative tracers like Cl)
-or \code{"reactive"} (for reactive tracers like N). Defaults to \code{"conservative"}.}
+\item{tracer_type}{Character. Either \code{"conservative"} or \code{"reactive"}. Defaults to \code{"conservative"}.}
 
 \item{model_type}{Character string specifying the model type. One of:
 \code{"FO"}, \code{"FO_TS"}, \code{"MM"}, or \code{"MM_TS"}. Defaults to \code{"FO"}.}
 
-\item{bounds}{A named list specifying lower and upper bounds for parameters.}
+\item{bounds}{A named list specifying lower and upper bounds for parameters to be optimized (length 2).}
 
-\item{fixed_params}{A named list of parameters to keep constant. This is highly useful
-when fitting reactive tracers where hydraulic parameters are already known.}
+\item{fixed_params}{A named list of parameters to keep constant (length 1).}
 
 \item{n_evals}{Integer. Number of optimization evaluations for mlr3mbo. Default: \code{80}.}
 }
 \value{
-An object of class \code{nutrilite_fit} containing the best parameters, MSE, RSS, and metadata.
+An object of class \code{nutrilite_fit}.
 }
 \description{
 Nutrilite fits stream solute dynamics models using Bayesian optimization via mlr3mbo.
-It supports a two-step fitting process: first fitting hydraulic parameters using a
-conservative tracer (e.g., Cl), and then fitting biogeochemical parameters using a
-reactive tracer (e.g., N).
+It supports a flexible fitting process where ANY parameter can be either optimized (by
+providing a range in \code{bounds}) or fixed (by providing it in \code{fixed_params}).
 }

@@ -17,3 +17,7 @@ Imports:
     mlr3mbo,
     paradox,
     ReacTran
+Suggests: 
+    knitr,
+    rmarkdown
+VignetteBuilder: knitr

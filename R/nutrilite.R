@@ -2,25 +2,22 @@
 #'
 #' @description 
 #' Nutrilite fits stream solute dynamics models using Bayesian optimization via mlr3mbo.
-#' It supports a two-step fitting process: first fitting hydraulic parameters using a 
-#' conservative tracer (e.g., Cl), and then fitting biogeochemical parameters using a 
-#' reactive tracer (e.g., N).
+#' It supports a flexible fitting process where ANY parameter can be either optimized (by 
+#' providing a range in `bounds`) or fixed (by providing it in `fixed_params`).
 #'
 #' @param time Numeric vector of observation times in seconds.
 #' @param conc Numeric vector of observed concentrations (mg/L or µg/L).
 #' @param distance Numeric. Distance from the injection point to the sampling point, in meters.
 #' @param injected_mass Numeric. Total mass of the tracer injected.
 #' @param cross_area Numeric. Cross-sectional area of the stream, in square meters.
-#' @param tracer_type Character. Either \code{"conservative"} (for conservative tracers like Cl) 
-#'        or \code{"reactive"} (for reactive tracers like N). Defaults to \code{"conservative"}.
+#' @param tracer_type Character. Either \code{"conservative"} or \code{"reactive"}. Defaults to \code{"conservative"}.
 #' @param model_type Character string specifying the model type. One of:
 #'   \code{"FO"}, \code{"FO_TS"}, \code{"MM"}, or \code{"MM_TS"}. Defaults to \code{"FO"}.
-#' @param bounds A named list specifying lower and upper bounds for parameters.
-#' @param fixed_params A named list of parameters to keep constant. This is highly useful 
-#'        when fitting reactive tracers where hydraulic parameters are already known.
+#' @param bounds A named list specifying lower and upper bounds for parameters to be optimized (length 2).
+#' @param fixed_params A named list of parameters to keep constant (length 1).
 #' @param n_evals Integer. Number of optimization evaluations for mlr3mbo. Default: \code{80}.
 #'
-#' @return An object of class \code{nutrilite_fit} containing the best parameters, MSE, RSS, and metadata.
+#' @return An object of class \code{nutrilite_fit}.
 #' 
 #' @export
 #' @importFrom ReacTran setup.grid.1D fiadeiro tran.1D
@@ -46,9 +43,9 @@ nutrilite <- function(
   model_type <- match.arg(model_type)
   is_cons <- (tracer_type == "conservative")
   
-  # 1. 网格与物理空间设置
+  # --- 1. 网格与物理空间设置 ---
   dx <- 0.05
-  release_offset_physical <- 10.0
+  release_offset_physical <- max(10.0, distance * 0.15)
   release_zone_physical <- 0.4
   release_offset_cells <- ceiling(release_offset_physical / dx)
   release_zone_cells <- max(1, ceiling(release_zone_physical / dx))
@@ -67,7 +64,7 @@ nutrilite <- function(
   injected_volume <- cross_area * release_zone_physical
   ini_conc <- injected_mass / injected_volume
 
-  # 2. 定义内部 PDE 求解器
+  # --- 2. 定义内部 PDE 求解器 ---
   river_solver_pde <- function(times, y, parms) {
     cs <- y[1:N_grid]
     cts <- y[(N_grid + 1):(2 * N_grid)]
@@ -105,34 +102,32 @@ nutrilite <- function(
     list(c(dcs, dcts))
   }
 
-  # 3. 动态构建参数搜索空间
+  # --- 3. 动态构建参数搜索空间 (复刻你的 single_pulse 逻辑) ---
   param_list_dynamic <- list()
-  if (is.null(bounds)) stop("Please provide a 'bounds' list.")
+  if (is.null(bounds) || length(bounds) == 0) {
+    stop("Please provide a 'bounds' list for parameters you want to optimize.")
+  }
   
-  if (is_cons) {
-    param_list_dynamic$D <- paradox::p_dbl(lower = bounds$D[1], upper = bounds$D[2])
-    param_list_dynamic$U <- paradox::p_dbl(lower = bounds$U[1], upper = bounds$U[2])
-    param_list_dynamic$bg_conc <- paradox::p_dbl(lower = bounds$bg_conc[1], upper = bounds$bg_conc[2])
-    if (grepl("TS", model_type)) {
-      param_list_dynamic$Alpha <- paradox::p_dbl(lower = bounds$Alpha[1], upper = bounds$Alpha[2])
-      param_list_dynamic$AsA_coeff <- paradox::p_dbl(lower = bounds$AsA_coeff[1], upper = bounds$AsA_coeff[2])
-    }
-  } else {
-    param_list_dynamic$bg_conc <- paradox::p_dbl(lower = bounds$bg_conc[1], upper = bounds$bg_conc[2])
-    if (grepl("FO", model_type)) {
-      param_list_dynamic$K_N <- paradox::p_dbl(lower = bounds$K_N[1], upper = bounds$K_N[2])
-    } else if (grepl("MM", model_type)) {
-      param_list_dynamic$V_max <- paradox::p_dbl(lower = bounds$V_max[1], upper = bounds$V_max[2])
-      param_list_dynamic$K_m <- paradox::p_dbl(lower = bounds$K_m[1], upper = bounds$K_m[2])
+  # 遍历 bounds，自动识别优化范围
+  for (p_name in names(bounds)) {
+    val <- bounds[[p_name]]
+    if (length(val) == 2) {
+      param_list_dynamic[[p_name]] <- paradox::p_dbl(lower = min(val), upper = max(val))
+    } else if (length(val) == 1) {
+      # 容错：如果用户不小心把固定参数写进了 bounds，我们优雅地转移到 fixed_params
+      fixed_params[[p_name]] <- val
+    } else {
+      stop(sprintf("Parameter '%s' in bounds must be a vector of length 2.", p_name))
     }
   }
 
-  # 4. 目标函数
+  # --- 4. 目标函数 ---
   objective_fun <- function(xdt) {
     scores <- vapply(1:nrow(xdt), function(i) {
       params_optimizing_list <- as.list(xdt[i, ])
       current_full_params <- c(params_optimizing_list, fixed_params)
       
+      # [关键修复]：确保底层求解器所需的所有参数都存在，缺失的给予安全默认值 (源自 single_pulse.txt)
       possible_keys <- c("D", "U", "Alpha", "AsA_coeff", "bg_conc", "K_N", "V_max", "K_m")
       for(key in possible_keys) {
         if(is.null(current_full_params[[key]])) current_full_params[[key]] <- 0
@@ -164,7 +159,7 @@ nutrilite <- function(
     return(data.table::data.table(Score = scores))
   }
 
-  # 5. 运行 mlr3mbo 优化
+  # --- 5. 运行 mlr3mbo 优化 ---
   best_params_optim <- list()
   best_mse <- NA
   
@@ -189,7 +184,7 @@ nutrilite <- function(
   final_all_params <- c(fixed_params, best_params_optim)
   rss_final <- if (!is.na(best_mse)) best_mse * length(conc) else NA
 
-  # 6. 返回结果 (S3 Object)
+  # --- 6. 返回结果 (S3 Object) ---
   result <- list(
     best_params = final_all_params,
     best_mse = best_mse,
@@ -205,3 +200,4 @@ nutrilite <- function(
   class(result) <- "nutrilite_fit"
   return(result)
 }
+

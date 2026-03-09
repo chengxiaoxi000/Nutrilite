@@ -15,23 +15,25 @@ simulate_btc(
 )
 }
 \arguments{
-\item{time_seq}{Numeric vector of times to simulate.}
+\item{time_seq}{Numeric vector of times (in seconds) to simulate.}
 
-\item{distance}{Distance in meters.}
+\item{distance}{Distance from injection to observation point in meters.}
 
-\item{injected_mass}{Injected mass (mg or ug).}
+\item{injected_mass}{Injected mass of the tracer (mg or ug).}
 
-\item{cross_area}{Cross-sectional area in square meters.}
+\item{cross_area}{Cross-sectional area of the stream in square meters.}
 
 \item{params}{A named list of model parameters (e.g., U, D, Alpha, AsA_coeff, bg_conc, K_N, V_max, K_m).}
 
-\item{tracer_type}{"conservative" or "reactive".}
+\item{tracer_type}{Character. Either "conservative" or "reactive". Defaults to "conservative".}
 
-\item{model_type}{"FO", "FO_TS", "MM", or "MM_TS".}
+\item{model_type}{Character. "FO", "FO_TS", "MM", or "MM_TS". Defaults to "FO".}
 }
 \value{
 A data.frame with columns \code{time} and \code{conc}.
 }
 \description{
 Generates a simulated breakthrough curve based on user-defined parameters.
+This is highly useful for experimental design (e.g., predicting peak arrival time
+and concentration before going to the field) or sensitivity analysis.
 }
