@@ -1,7 +1,3 @@
-这里是为您准备的英文版 `README.md`。您可以直接将其保存到您的项目根目录中。
-
-***
-
 # Nutrilite: Estimate Nutrient Uptake in Stream Ecosystems
 
 ## Overview
