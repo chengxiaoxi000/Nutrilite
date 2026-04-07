@@ -2,8 +2,7 @@ Package: Nutrilite
 Title: Estimate Nutrient Uptake in Stream Ecosystems
 Version: 0.0.0.9000
 Authors@R: c(
-    person(given = "Traci", family = "Chan", role = c("aut", "cre"), email = "chengx2023@lzu.edu.cn"),
-    person(given = "Chao", family = "Song", role = "aut", email = "chaosong@lzu.edu.cn")
+
   )
 Description: Nutrilite is a lightweight tool for estimating nutrient uptake rates in stream ecosystems. It uses numerical solutions of differential equations describing nutrient dynamics, and then fits the model to observed breakthrough curves (BTCs) of nutrient concentrations. By leveraging Bayesian optimization, Nutrilite can efficiently infer the globally optimal model parameters, enabling robust estimation of nutrient uptake rates.
 License: MIT + file LICENSE
