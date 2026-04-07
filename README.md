@@ -99,8 +99,7 @@ plot(fit_n, main="Reactive Tracer Fit (N)")
 ```
 
 ## Authors
-* **Traci Chan** (chengx2023@lzu.edu.cn)
-* **Chao Song** (chaosong@lzu.edu.cn)
+
 
 ## License
 This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.
