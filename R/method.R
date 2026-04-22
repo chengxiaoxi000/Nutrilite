@@ -66,7 +66,7 @@ summary.nutrilite_fit <- function(object, ...) {
   cat("Model Type    :", object$model_type, "\n")
   cat("Data Points   :", object$n_data, "\n")
   cat("Mean Sq Error :", signif(object$best_mse, 5), "\n")
-  # 👇 这里直接调用原生的 AIC()
+  # 这里直接调用原生的 AIC()
   cat("AIC           :", signif(AIC(object), 5), "\n") 
   cat("----------------------------------------\n")
   cat("Best Optimized Parameters:\n")
