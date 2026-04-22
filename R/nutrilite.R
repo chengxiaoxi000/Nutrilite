@@ -102,19 +102,19 @@ nutrilite <- function(
     list(c(dcs, dcts))
   }
 
-  # --- 3. 动态构建参数搜索空间 (复刻你的 single_pulse 逻辑) ---
+  # --- 3. 动态构建参数搜索空间 ---
   param_list_dynamic <- list()
   if (is.null(bounds) || length(bounds) == 0) {
     stop("Please provide a 'bounds' list for parameters you want to optimize.")
   }
   
-  # 遍历 bounds，自动识别优化范围
+  # 遍历 bounds
   for (p_name in names(bounds)) {
     val <- bounds[[p_name]]
     if (length(val) == 2) {
       param_list_dynamic[[p_name]] <- paradox::p_dbl(lower = min(val), upper = max(val))
     } else if (length(val) == 1) {
-      # 容错：如果用户不小心把固定参数写进了 bounds，我们优雅地转移到 fixed_params
+      
       fixed_params[[p_name]] <- val
     } else {
       stop(sprintf("Parameter '%s' in bounds must be a vector of length 2.", p_name))
@@ -127,7 +127,7 @@ nutrilite <- function(
       params_optimizing_list <- as.list(xdt[i, ])
       current_full_params <- c(params_optimizing_list, fixed_params)
       
-      # [关键修复]：确保底层求解器所需的所有参数都存在，缺失的给予安全默认值 (源自 single_pulse.txt)
+      # 确保底层求解器所需的所有参数都存在，缺失的给予安全默认值
       possible_keys <- c("D", "U", "Alpha", "AsA_coeff", "bg_conc", "K_N", "V_max", "K_m")
       for(key in possible_keys) {
         if(is.null(current_full_params[[key]])) current_full_params[[key]] <- 0
