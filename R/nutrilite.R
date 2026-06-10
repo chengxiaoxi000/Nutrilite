@@ -43,7 +43,7 @@ nutrilite <- function(
   model_type <- match.arg(model_type)
   is_cons <- (tracer_type == "conservative")
   
-  # --- 1. 网格与物理空间设置 ---
+  # 网格与物理空间设置
   dx <- 0.05
   release_offset_physical <- max(10.0, distance * 0.15)
   release_zone_physical <- 0.4
@@ -64,7 +64,7 @@ nutrilite <- function(
   injected_volume <- cross_area * release_zone_physical
   ini_conc <- injected_mass / injected_volume
 
-  # --- 2. 定义内部 PDE 求解器 ---
+  # PDE求解器
   river_solver_pde <- function(times, y, parms) {
     cs <- y[1:N_grid]
     cts <- y[(N_grid + 1):(2 * N_grid)]
@@ -102,7 +102,7 @@ nutrilite <- function(
     list(c(dcs, dcts))
   }
 
-  # --- 3. 动态构建参数搜索空间 ---
+  # 参数搜索空间
   param_list_dynamic <- list()
   if (is.null(bounds) || length(bounds) == 0) {
     stop("Please provide a 'bounds' list for parameters you want to optimize.")
@@ -121,13 +121,13 @@ nutrilite <- function(
     }
   }
 
-  # --- 4. 目标函数 ---
+  # 目标函数
   objective_fun <- function(xdt) {
     scores <- vapply(1:nrow(xdt), function(i) {
       params_optimizing_list <- as.list(xdt[i, ])
       current_full_params <- c(params_optimizing_list, fixed_params)
       
-      # 确保底层求解器所需的所有参数都存在，缺失的给予安全默认值
+      # 确保求解器所需的所有参数都存在
       possible_keys <- c("D", "U", "Alpha", "AsA_coeff", "bg_conc", "K_N", "V_max", "K_m")
       for(key in possible_keys) {
         if(is.null(current_full_params[[key]])) current_full_params[[key]] <- 0
@@ -159,7 +159,7 @@ nutrilite <- function(
     return(data.table::data.table(Score = scores))
   }
 
-  # --- 5. 运行 mlr3mbo 优化 ---
+  # 使用mlr3mbo优化
   best_params_optim <- list()
   best_mse <- NA
   
@@ -184,7 +184,7 @@ nutrilite <- function(
   final_all_params <- c(fixed_params, best_params_optim)
   rss_final <- if (!is.na(best_mse)) best_mse * length(conc) else NA
 
-  # --- 6. 返回结果 (S3 Object) ---
+  # 返回结果(S3 Object)
   result <- list(
     best_params = final_all_params,
     best_mse = best_mse,
