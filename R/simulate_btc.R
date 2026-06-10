@@ -29,7 +29,7 @@ simulate_btc <- function(
   model_type <- match.arg(model_type)
   is_cons <- (tracer_type == "conservative")
   
-  # --- 1. 构建物理网格 (已与 nutrilite 主函数同步) ---
+  # 构建物理网格
   dx <- 0.05
   
   # 动态设定上游缓冲带，保底10米，随距离略微增加
@@ -52,7 +52,7 @@ simulate_btc <- function(
   injected_volume <- cross_area * release_zone_physical
   ini_conc <- injected_mass / injected_volume
   
-  # --- 2. 提取并补齐参数 (赋予安全默认值) ---
+  # 补齐参数
   p <- list(
     bg_conc   = ifelse(is.null(params$bg_conc), 0, params$bg_conc),
     U         = ifelse(is.null(params$U), 0.1, params$U),
@@ -66,7 +66,7 @@ simulate_btc <- function(
     is_cons    = is_cons
   )
   
-  # --- 3. PDE 求解器 ---
+  # PDE求解器
   river_solver <- function(times, y, parms) {
     cs <- y[1:N_grid]
     cts <- y[(N_grid + 1):(2 * N_grid)]
@@ -93,7 +93,7 @@ simulate_btc <- function(
     list(c(dcs, dcts))
   }
   
-  # --- 4. 初始条件与求解 ---
+  # 初始条件
   yini <- c(rep(p$bg_conc, release_offset_cells),
             rep(ini_conc, release_zone_cells),
             rep(p$bg_conc, N_grid - release_offset_cells - release_zone_cells),
